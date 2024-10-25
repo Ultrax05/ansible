@@ -2,6 +2,8 @@
 - name: Instalar .NET Core 8 y configurar la aplicación de viñedos
   hosts: localhost
   become: yes
+  gather_facts: no  # Evita la recopilación de hechos
+
   tasks:
     - name: Actualizar el sistema
       apt:
