@@ -1,0 +1,134 @@
+---
+- name: Instalar .NET Core 8 y configurar la aplicación de viñedos
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Actualizar el sistema
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Instalar dependencias necesarias
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Descargar el paquete de repositorio de Microsoft para Ubuntu 24.04 LTS
+      command: wget https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
+
+    - name: Instalar el paquete de repositorio de Microsoft
+      command: dpkg -i /tmp/packages-microsoft-prod.deb
+
+    - name: Actualizar el caché de apt después de agregar el repositorio
+      apt:
+        update_cache: yes
+
+    - name: Instalar .NET SDK
+      apt:
+        name: dotnet-sdk-8.0
+        state: present
+
+    - name: Crear directorio para la aplicación
+      file:
+        path: /home/ubuntu/music
+        state: directory
+
+    - name: Crear archivo del proyecto
+      copy:
+        dest: /home/ubuntu/music/music.csproj
+        content: |
+          <Project Sdk="Microsoft.NET.Sdk.Web">
+
+          <PropertyGroup>
+              <TargetFramework>net8.0</TargetFramework>
+          </PropertyGroup>
+
+          </Project>
+
+    - name: Crear archivo de código fuente
+      copy:
+        dest: /home/ubuntu/vineyard_app/Program.cs
+        content: |
+          using System;
+
+public interface IInstrument
+{
+    void Play();
+}
+
+public class Guitar : IInstrument
+{
+    public void Play()
+    {
+        Console.WriteLine("Playing a guitar.");
+    }
+}
+
+public class Piano : IInstrument
+{
+    public void Play()
+    {
+        Console.WriteLine("Playing a piano.");
+    }
+}
+
+// Aquí está el Factory Method
+public abstract class MusicStore
+{
+    // Método fábrica abstracto que las subclases implementan
+    public abstract IInstrument CreateInstrument();
+
+    public void PlayInstrument()
+    {
+        IInstrument instrument = CreateInstrument();
+        instrument.Play();
+    }
+}
+
+// Implementación concreta de la tienda que vende guitarras
+public class GuitarStore : MusicStore
+{
+    public override IInstrument CreateInstrument()
+    {
+        return new Guitar(); // Crea una guitarra
+    }
+}
+
+// Implementación concreta de la tienda que vende pianos
+public class PianoStore : MusicStore
+{
+    public override IInstrument CreateInstrument()
+    {
+        return new Piano(); // Crea un piano
+    }
+}
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        // Tienda de guitarras
+        MusicStore guitarStore = new GuitarStore();
+        guitarStore.PlayInstrument();
+
+        // Tienda de pianos
+        MusicStore pianoStore = new PianoStore();
+        pianoStore.PlayInstrument();
+    }
+}
+
+    - name: Construir la aplicación de viñedos
+      command: dotnet build /home/ubuntu/music/music.csproj
+      args:
+        chdir: /home/ubuntu/music
+
+    - name: Ejecutar la aplicación
+      command: dotnet run --urls "http://0.0.0.0:5000"
+      args:
+        chdir: /home/ubuntu/music
+      async: 10
+      poll: 0
